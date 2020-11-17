@@ -2,10 +2,13 @@
 """Bounding boxes operators"""
 from __future__ import absolute_import
 
+import mxnet as mx
 import numpy as np
 from mxnet import gluon
+from mxnet import use_np
+mx.npx.set_np()
 
-
+@use_np
 class NumPyBBoxCornerToCenter(object):
     """Convert corner boxes to center boxes using numpy.
     Corner boxes are encoded as (xmin, ymin, xmax, ymax)
@@ -42,6 +45,7 @@ class NumPyBBoxCornerToCenter(object):
             return x, y, width, height
 
 
+@use_np
 class BBoxCornerToCenter(gluon.HybridBlock):
     """Convert corner boxes to center boxes.
     Corner boxes are encoded as (xmin, ymin, xmax, ymax)
@@ -64,9 +68,9 @@ class BBoxCornerToCenter(gluon.HybridBlock):
         self._split = split
         self._axis = axis
 
-    def hybrid_forward(self, F, x):
+    def forward(self, x):
         """Hybrid forward"""
-        xmin, ymin, xmax, ymax = F.split(x, axis=self._axis, num_outputs=4)
+        xmin, ymin, xmax, ymax = mx.np.split(x, axis=self._axis, num_outputs=4)
         # note that we do not have +1 here since our nms and box iou does not.
         # this is different that detectron.
         width = xmax - xmin
@@ -74,11 +78,12 @@ class BBoxCornerToCenter(gluon.HybridBlock):
         x = xmin + width * 0.5
         y = ymin + height * 0.5
         if not self._split:
-            return F.concat(x, y, width, height, dim=self._axis)
+            return mx.np.concatenate(x, y, width, height, axis=self._axis)
         else:
             return x, y, width, height
 
 
+@use_np
 class BBoxCenterToCorner(gluon.HybridBlock):
     """Convert center boxes to corner boxes.
     Corner boxes are encoded as (xmin, ymin, xmax, ymax)
@@ -103,7 +108,7 @@ class BBoxCenterToCorner(gluon.HybridBlock):
 
     def hybrid_forward(self, F, x):
         """Hybrid forward"""
-        x, y, w, h = F.split(x, axis=self._axis, num_outputs=4)
+        x, y, w, h = mx.np.split(x, axis=self._axis, num_outputs=4)
         hw = w * 0.5
         hh = h * 0.5
         xmin = x - hw
@@ -111,11 +116,12 @@ class BBoxCenterToCorner(gluon.HybridBlock):
         xmax = x + hw
         ymax = y + hh
         if not self._split:
-            return F.concat(xmin, ymin, xmax, ymax, dim=self._axis)
+            return mx.np.concatenate(xmin, ymin, xmax, ymax, axis=self._axis)
         else:
             return xmin, ymin, xmax, ymax
 
 
+@use_np
 class BBoxSplit(gluon.HybridBlock):
     """Split bounding boxes into 4 columns.
 
@@ -136,10 +142,11 @@ class BBoxSplit(gluon.HybridBlock):
         self._axis = axis
         self._squeeze_axis = squeeze_axis
 
-    def hybrid_forward(self, F, x):
-        return F.split(x, axis=self._axis, num_outputs=4, squeeze_axis=self._squeeze_axis)
+    def forward(self, x):
+        return mx.np.split(x, axis=self._axis, num_outputs=4, squeeze_axis=self._squeeze_axis)
 
 
+@use_np
 class BBoxArea(gluon.HybridBlock):
     """Calculate the area of bounding boxes.
 
@@ -167,13 +174,14 @@ class BBoxArea(gluon.HybridBlock):
         else:
             raise ValueError("Unsupported format: {}. Use 'corner' or 'center'.".format(fmt))
 
-    def hybrid_forward(self, F, x):
+    def forward(self, x):
         _, _, width, height = self._pre(x)
-        width = F.where(width > 0, width, F.zeros_like(width))
-        height = F.where(height > 0, height, F.zeros_like(height))
+        width = mx.np.where(width > 0, width, mx.np.zeros_like(width))
+        height = mx.np.where(height > 0, height, mx.np.zeros_like(height))
         return width * height
 
 
+@use_np
 class BBoxBatchIOU(gluon.HybridBlock):
     """Batch Bounding Box IOU.
 
@@ -203,7 +211,7 @@ class BBoxBatchIOU(gluon.HybridBlock):
         else:
             raise ValueError("Unsupported format: {}. Use 'corner' or 'center'.".format(fmt))
 
-    def hybrid_forward(self, F, a, b):
+    def forward(self, a, b):
         """Compute IOU for each batch
 
         Parameters
@@ -223,24 +231,25 @@ class BBoxBatchIOU(gluon.HybridBlock):
         bl, bt, br, bb = self._pre(b)
 
         # (B, N, M)
-        left = F.broadcast_maximum(al.expand_dims(-1), bl.expand_dims(-2))
-        right = F.broadcast_minimum(ar.expand_dims(-1), br.expand_dims(-2))
-        top = F.broadcast_maximum(at.expand_dims(-1), bt.expand_dims(-2))
-        bot = F.broadcast_minimum(ab.expand_dims(-1), bb.expand_dims(-2))
+        left = mx.np.maximum(al.expand_dims(-1), bl.expand_dims(-2))
+        right = mx.np.minimum(ar.expand_dims(-1), br.expand_dims(-2))
+        top = mx.np.maximum(at.expand_dims(-1), bt.expand_dims(-2))
+        bot = mx.np.minimum(ab.expand_dims(-1), bb.expand_dims(-2))
 
         # clip with (0, float16.max)
-        iw = F.clip(right - left + self._offset, a_min=0, a_max=6.55040e+04)
-        ih = F.clip(bot - top + self._offset, a_min=0, a_max=6.55040e+04)
+        iw = mx.np.clip(right - left + self._offset, a_min=0, a_max=6.55040e+04)
+        ih = mx.np.clip(bot - top + self._offset, a_min=0, a_max=6.55040e+04)
         i = iw * ih
 
         # areas
         area_a = ((ar - al + self._offset) * (ab - at + self._offset)).expand_dims(-1)
         area_b = ((br - bl + self._offset) * (bb - bt + self._offset)).expand_dims(-2)
-        union = F.broadcast_add(area_a, area_b) - i
+        union = (area_a + area_b) - i
 
         return i / (union + self._eps)
 
 
+@use_np
 class BBoxClipToImage(gluon.HybridBlock):
     """Clip bounding box coordinates to image boundaries.
     If multiple images are supplied and padded, must have additional inputs
@@ -250,7 +259,7 @@ class BBoxClipToImage(gluon.HybridBlock):
     def __init__(self, **kwargs):
         super(BBoxClipToImage, self).__init__(**kwargs)
 
-    def hybrid_forward(self, F, x, img):
+    def forward(self, x, img):
         """If images are padded, must have additional inputs for clipping
 
         Parameters
@@ -263,8 +272,8 @@ class BBoxClipToImage(gluon.HybridBlock):
         (B, N, 4) Bounding box coordinates.
 
         """
-        x = F.maximum(x, 0.0)
+        x = mx.np.maximum(x, 0.0)
         # window [B, 2] -> reverse hw -> tile [B, 4] -> [B, 1, 4], boxes [B, N, 4]
-        window = F.shape_array(img).slice_axis(axis=0, begin=2, end=None).expand_dims(0)
-        m = F.tile(F.reverse(window, axis=1), reps=(2,)).reshape((0, -4, 1, -1))
-        return F.broadcast_minimum(x, F.cast(m, dtype='float32'))
+        window = mx.npx.shape_array(img).as_nd_ndarray().slice_axis(axis=0, begin=2, end=None).expand_dims(0).as_np_ndarray()
+        m = mx.np.tile(mx.nd.reverse(window.as_nd_ndarray(), axis=1), reps=(2,)).reshape((0, -4, 1, -1)).as_np_ndarray()
+        return mx.np.minimum(x, mx.npx.cast(m, dtype='float32'))

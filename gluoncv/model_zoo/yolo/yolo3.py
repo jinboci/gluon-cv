@@ -40,6 +40,7 @@ def _upsample(x, stride=2):
     return x.repeat(axis=-1, repeats=stride).repeat(axis=-2, repeats=stride)
 
 
+@use_np
 class YOLOOutputV3(gluon.HybridBlock):
     """YOLO output layer V3.
     Parameters
@@ -133,7 +134,7 @@ class YOLOOutputV3(gluon.HybridBlock):
                 new_params.set_data(new_data)
 
 
-    def hybrid_forward(self, F, x, anchors, offsets):
+    def forward(self, x, anchors, offsets):
         """Hybrid Forward of YOLOV3Output layer.
         Parameters
         ----------
@@ -153,26 +154,28 @@ class YOLOOutputV3(gluon.HybridBlock):
             During inference, return detections.
         """
         # prediction flat to (batch, pred per pixel, height * width)
-        pred = self.prediction(x).reshape((0, self._num_anchors * self._num_pred, -1))
+        pred = self.prediction(x)
+        pred = pred.reshape((pred.shape[0], self._num_anchors * self._num_pred, -1))
         # transpose to (batch, height * width, num_anchor, num_pred)
-        pred = pred.transpose(axes=(0, 2, 1)).reshape((0, -1, self._num_anchors, self._num_pred))
+        pred = pred.transpose(axes=(pred.shape[0], 2, 1))
+        pred = pred.reshape((pred.shape[0], -1, self._num_anchors, self._num_pred))
         # components
-        raw_box_centers = pred.slice_axis(axis=-1, begin=0, end=2)
-        raw_box_scales = pred.slice_axis(axis=-1, begin=2, end=4)
-        objness = pred.slice_axis(axis=-1, begin=4, end=5)
-        class_pred = pred.slice_axis(axis=-1, begin=5, end=None)
+        raw_box_centers = mx.nd.slice_axis(pred.as_nd_ndarray(), axis=-1, begin=0, end=2).as_np_ndarray()
+        raw_box_scales = mx.nd.slice_axis(pred.as_nd_ndarray(), axis=-1, begin=2, end=4).as_np_ndarray()
+        objness = mx.nd.slice_axis(pred.as_nd_ndarray(), axis=-1, begin=4, end=5).as_np_ndarray()
+        class_pred = mx.nd.slice_axis(pred.as_nd_ndarray(), axis=-1, begin=5, end=None).as_np_ndarray()
 
         # valid offsets, (1, 1, height, width, 2)
-        offsets = F.slice_like(offsets, x * 0, axes=(2, 3))
+        offsets = mx.nd.slice_like(offsets.as_nd_ndarray(), x * 0, axes=(2, 3)).as_np_ndarray()
         # reshape to (1, height*width, 1, 2)
         offsets = offsets.reshape((1, -1, 1, 2))
 
-        box_centers = F.broadcast_add(F.sigmoid(raw_box_centers), offsets) * self._stride
-        box_scales = F.broadcast_mul(F.exp(raw_box_scales), anchors)
-        confidence = F.sigmoid(objness)
-        class_score = F.broadcast_mul(F.sigmoid(class_pred), confidence)
+        box_centers = (mx.npx.sigmoid(raw_box_centers) + offsets) * self._stride
+        box_scales = mx.np.exp(raw_box_scales) * anchors
+        confidence = mx.npx.sigmoid(objness)
+        class_score = mx.npx.sigmoid(class_pred) * confidence
         wh = box_scales / 2.0
-        bbox = F.concat(box_centers - wh, box_centers + wh, dim=-1)
+        bbox = mx.np.concatenate((box_centers - wh, box_centers + wh), axis=-1)
 
         if autograd.is_training():
             # during training, we don't need to convert whole bunch of info to detection results
@@ -180,15 +183,19 @@ class YOLOOutputV3(gluon.HybridBlock):
                     objness, class_pred, anchors, offsets)
 
         # prediction per class
-        bboxes = F.tile(bbox, reps=(self._classes, 1, 1, 1, 1))
-        scores = F.transpose(class_score, axes=(3, 0, 1, 2)).expand_dims(axis=-1)
-        ids = F.broadcast_add(scores * 0, F.arange(0, self._classes).reshape((0, 1, 1, 1, 1)))
-        detections = F.concat(ids, scores, bboxes, dim=-1)
+        bboxes = mx.np.tile(bbox, reps=(self._classes, 1, 1, 1, 1))
+        scores = mx.np.transpose(class_score, axes=(3, 0, 1, 2))
+        scores = mx.np.expand_dims(scores, axis=-1)
+        ids = (scores * 0 + mx.np.arange(0, self._classes)
+        ids = ids.reshape((ids.shape[0], 1, 1, 1, 1)))
+        detections = mx.np.concatenate((ids, scores, bboxes), axis=-1)
         # reshape to (B, xx, 6)
-        detections = F.reshape(detections.transpose(axes=(1, 0, 2, 3, 4)), (0, -1, 6))
+        detections = detections.transpose(axes=(1, detections.shape[1], 2, 3, 4))
+        detections = mx.np.reshape(detections, (detections.shape[0], -1, 6))
         return detections
 
 
+@use_np
 class YOLODetectionBlockV3(gluon.HybridBlock):
     """YOLO V3 Detection Block which does the following:
     - add a few conv layers
@@ -222,12 +229,13 @@ class YOLODetectionBlockV3(gluon.HybridBlock):
             self.tip = _conv2d(channel * 2, 3, 1, 1, norm_layer=norm_layer, norm_kwargs=norm_kwargs)
 
     # pylint: disable=unused-argument
-    def hybrid_forward(self, F, x):
+    def forward(self, x):
         route = self.body(x)
         tip = self.tip(route)
         return route, tip
 
 
+@use_np
 class YOLOV3(gluon.HybridBlock):
     """YOLO V3 detection network.
     Reference: https://arxiv.org/pdf/1804.02767.pdf.
@@ -326,7 +334,7 @@ class YOLOV3(gluon.HybridBlock):
         """
         return self._classes
 
-    def hybrid_forward(self, F, x, *args):
+    def forward(self, x, *args):
         """YOLOV3 network hybrid forward.
         Parameters
         ----------
@@ -373,8 +381,8 @@ class YOLOV3(gluon.HybridBlock):
                 all_anchors.append(anchors)
                 all_offsets.append(offsets)
                 # here we use fake featmap to reduce memory consuption, only shape[2, 3] is used
-                fake_featmap = F.zeros_like(tip.slice_axis(
-                    axis=0, begin=0, end=1).slice_axis(axis=1, begin=0, end=1))
+                fake_featmap = mx.np.zeros_like(tip.as_nd_ndarray().slice_axis(
+                    axis=0, begin=0, end=1).slice_axis(axis=1, begin=0, end=1).as_np_ndarray())
                 all_feat_maps.append(fake_featmap)
             else:
                 dets = output(tip)
@@ -386,35 +394,35 @@ class YOLOV3(gluon.HybridBlock):
             # upsample feature map reverse to shallow layers
             upsample = _upsample(x, stride=2)
             route_now = routes[::-1][i + 1]
-            x = F.concat(F.slice_like(upsample, route_now * 0, axes=(2, 3)), route_now, dim=1)
+            x = mx.np.concatenate((mx.nd.slice_like(upsample.as_nd_ndarray(), route_now * 0, axes=(2, 3)).as_np_ndarray(), route_now), axis=1)
 
         if autograd.is_training():
             # during training, the network behaves differently since we don't need detection results
             if autograd.is_recording():
                 # generate losses and return them directly
-                box_preds = F.concat(*all_detections, dim=1)
-                all_preds = [F.concat(*p, dim=1) for p in [
+                box_preds = mx.np.concatenate(*all_detections, axis=1)
+                all_preds = [mx.np.concatenate(*p, axis=1) for p in [
                     all_objectness, all_box_centers, all_box_scales, all_class_pred]]
                 all_targets = self._target_generator(box_preds, *args)
                 return self._loss(*(all_preds + all_targets))
 
             # return raw predictions, this is only used in DataLoader transform function.
-            return (F.concat(*all_detections, dim=1), all_anchors, all_offsets, all_feat_maps,
-                    F.concat(*all_box_centers, dim=1), F.concat(*all_box_scales, dim=1),
-                    F.concat(*all_objectness, dim=1), F.concat(*all_class_pred, dim=1))
+            return (mx.np.concatenate(*all_detections, axis=1), all_anchors, all_offsets, all_feat_maps,
+                    mx.np.concatenate(*all_box_centers, axis=1), mx.np.concatenate(*all_box_scales, axis=1),
+                    mx.np.concatenate(*all_objectness, dim=1), mx.np.concatenate(*all_class_pred, axis=1))
 
         # concat all detection results from different stages
-        result = F.concat(*all_detections, dim=1)
+        result = mx.np.concatenate(*all_detections, axis=1)
         # apply nms per class
         if self.nms_thresh > 0 and self.nms_thresh < 1:
-            result = F.contrib.box_nms(
+            result = mx.npx.box_nms(
                 result, overlap_thresh=self.nms_thresh, valid_thresh=0.01,
                 topk=self.nms_topk, id_index=0, score_index=1, coord_start=2, force_suppress=False)
             if self.post_nms > 0:
                 result = result.slice_axis(axis=1, begin=0, end=self.post_nms)
-        ids = result.slice_axis(axis=-1, begin=0, end=1)
-        scores = result.slice_axis(axis=-1, begin=1, end=2)
-        bboxes = result.slice_axis(axis=-1, begin=2, end=None)
+        ids = result.as_nd_ndarray().slice_axis(axis=-1, begin=0, end=1).as_np_ndarray()
+        scores = result.as_nd_ndarray().slice_axis(axis=-1, begin=1, end=2).as_np_ndarray()
+        bboxes = result.as_nd_ndarray().slice_axis(axis=-1, begin=2, end=None).as_np_ndarray()
         return ids, scores, bboxes
 
     def set_nms(self, nms_thresh=0.45, nms_topk=400, post_nms=100):
