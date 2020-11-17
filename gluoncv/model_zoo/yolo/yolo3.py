@@ -73,7 +73,7 @@ class YOLOOutputV3(gluon.HybridBlock):
         self.prediction = nn.Conv2D(all_pred, kernel_size=1, padding=0, strides=1)
         # anchors will be multiplied to predictions
         anchors = anchors.reshape(1, 1, -1, 2)
-        self.anchors = self.params.get_constant('anchor_%d'%(index), anchors)
+        self.anchors = self.params.get('anchor_%d'%(index), anchors)
         # offsets will be added to predictions
         grid_x = np.arange(alloc_size[1])
         grid_y = np.arange(alloc_size[0])
@@ -82,7 +82,7 @@ class YOLOOutputV3(gluon.HybridBlock):
         offsets = np.concatenate((grid_x[:, :, np.newaxis], grid_y[:, :, np.newaxis]), axis=-1)
         # expand dims to (1, 1, n, n, 2) so it's easier for broadcasting
         offsets = np.expand_dims(np.expand_dims(offsets, axis=0), axis=0)
-        self.offsets = self.params.get_constant('offset_%d'%(index), offsets)
+        self.offsets = self.params.get('offset_%d'%(index), offsets)
 
     def reset_class(self, classes, reuse_weights=None):
         """Reset class prediction.
@@ -111,7 +111,7 @@ class YOLOOutputV3(gluon.HybridBlock):
         in_channels = list(old_pred.params.values())[0].shape[1]
         self.prediction = nn.Conv2D(
             all_pred, kernel_size=1, padding=0, strides=1,
-            in_channels=in_channels, prefix=old_pred.prefix)
+            in_channels=in_channels)
         self.prediction.initialize(ctx=ctx)
         if reuse_weights:
             new_pred = self.prediction
@@ -365,6 +365,7 @@ class YOLOV3(gluon.HybridBlock):
         all_detections = []
         routes = []
         for stage, block, output in zip(self.stages, self.yolo_blocks, self.yolo_outputs):
+            import pdb; pdb.set_trace()
             x = stage(x)
             routes.append(x)
 
@@ -384,6 +385,7 @@ class YOLOV3(gluon.HybridBlock):
                     axis=0, begin=0, end=1).slice_axis(axis=1, begin=0, end=1).as_np_ndarray())
                 all_feat_maps.append(fake_featmap)
             else:
+                import pdb; pdb.set_trace()
                 dets = output(tip)
             all_detections.append(dets)
             if i >= len(routes) - 1:
@@ -521,7 +523,7 @@ class YOLOV3(gluon.HybridBlock):
             outputs.reset_class(classes, reuse_weights=reuse_weights)
 
 def get_yolov3(name, stages, filters, anchors, strides, classes,
-               dataset, pretrained=False, ctx=mx.cpu(),
+               dataset, pretrained=False, ctx=mx.cpu(), ignore_extra=False,
                root=os.path.join('~', '.mxnet', 'models'), **kwargs):
     """Get YOLOV3 models.
     Parameters
@@ -577,7 +579,7 @@ def get_yolov3(name, stages, filters, anchors, strides, classes,
     if pretrained:
         from ..model_store import get_model_file
         full_name = '_'.join(('yolo3', name, dataset))
-        net.load_parameters(get_model_file(full_name, tag=pretrained, root=root), ctx=ctx)
+        net.load_parameters(get_model_file(full_name, tag=pretrained, root=root), ctx=ctx, ignore_extra=ignore_extra)
     return net
 
 def yolo3_darknet53_voc(pretrained_base=True, pretrained=False,
@@ -612,7 +614,7 @@ def yolo3_darknet53_voc(pretrained_base=True, pretrained=False,
     classes = VOCDetection.CLASSES
     return get_yolov3(
         'darknet53', stages, [512, 256, 128], anchors, strides, classes, 'voc',
-        pretrained=pretrained, norm_layer=norm_layer, norm_kwargs=norm_kwargs, **kwargs)
+        pretrained=pretrained, ignore_extra=True, norm_layer=norm_layer, norm_kwargs=norm_kwargs, **kwargs)
 
 def yolo3_darknet53_coco(pretrained_base=True, pretrained=False,
                          norm_layer=BatchNorm, norm_kwargs=None, **kwargs):
