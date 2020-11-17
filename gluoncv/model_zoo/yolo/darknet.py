@@ -14,7 +14,7 @@ __all__ = ['DarknetV3', 'get_darknet', 'darknet53']
 
 def _conv2d(channel, kernel, padding, stride, norm_layer=BatchNorm, norm_kwargs=None):
     """A common conv-bn-leakyrelu cell"""
-    cell = nn.HybridSequential(prefix='')
+    cell = nn.HybridSequential()
     cell.add(nn.Conv2D(channel, kernel_size=kernel,
                        strides=stride, padding=padding, use_bias=False))
     cell.add(norm_layer(epsilon=1e-5, momentum=0.9, **({} if norm_kwargs is None else norm_kwargs)))
@@ -40,7 +40,7 @@ class DarknetBasicBlockV3(gluon.HybridBlock):
     """
     def __init__(self, channel, norm_layer=BatchNorm, norm_kwargs=None, **kwargs):
         super(DarknetBasicBlockV3, self).__init__(**kwargs)
-        self.body = nn.HybridSequential(prefix='')
+        self.body = nn.HybridSequential()
         # 1x1 reduce
         self.body.add(_conv2d(channel, 1, 0, 1, norm_layer=norm_layer, norm_kwargs=norm_kwargs))
         # 3x3 conv expand
@@ -86,7 +86,7 @@ class DarknetV3(gluon.HybridBlock):
         for kwarg_key in kwargs:
             if kwarg_key not in ['prefix', 'params']:
                 raise Warning("class DraknetV3 should only accept kwargs {'params', or 'prefix'}")
-        super(DarknetV3, self).__init__(kwargs.get('prefix', None), kwargs.get('params', None))
+        super(DarknetV3, self).__init__(**kwargs)
         assert len(layers) == len(channels) - 1, (
             "len(channels) should equal to len(layers) + 1, given {} vs {}".format(
                 len(channels), len(layers)))
@@ -109,7 +109,7 @@ class DarknetV3(gluon.HybridBlock):
 
     def forward(self, x):
         x = self.features(x)
-        x = mx.npx.Pooling(x, kernel=(7, 7), global_pool=True, pool_type='avg')
+        x = mx.npx.pooling(x, kernel=(7, 7), global_pool=True, pool_type='avg')
         return self.output(x)
 
 # default configurations

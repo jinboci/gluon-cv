@@ -83,7 +83,7 @@ def _calib_model_list(model_list, ctx, x, pretrained=True, **kwargs):
         net(x)
         mx.nd.waitall()
 
-#@with_cpu(0)
+##@with_cpu(0)
 def _test_bn_global_stats(model_list, **kwargs):
     class _BatchNorm(mx.gluon.nn.BatchNorm):
         def __init__(self, axis=1, momentum=0.9, epsilon=1e-5, center=True, scale=True,
@@ -99,7 +99,7 @@ def _test_bn_global_stats(model_list, **kwargs):
     for model in model_list:
         gcv.model_zoo.get_model(model, norm_layer=_BatchNorm, use_global_stats=True, **kwargs)
 
-#@try_gpu(0)
+##@try_gpu(0)
 def test_classification_models():
     ctx = mx.context.current_context()
     x = mx.np.random.uniform(size=(2, 3, 32, 32), ctx=ctx)
@@ -114,41 +114,41 @@ def test_classification_models():
     _test_model_list(cifar_models, ctx, x)
 
 
-#@try_gpu(0)
+##@try_gpu(0)
 def test_imagenet_models():
     ctx = mx.context.current_context()
 
     # 224x224
     x = mx.np.random.uniform(size=(2, 3, 224, 224), ctx=ctx)
-    models = ['resnet18_v1', 'resnet34_v1',
-              'resnet50_v1', 'resnet101_v1', 'resnet152_v1',
-              'resnet18_v1b', 'resnet34_v1b', 'resnet50_v1b_gn',
-              'resnet50_v1b', 'resnet101_v1b', 'resnet152_v1b',
-              'resnet50_v1c', 'resnet101_v1c', 'resnet152_v1c',
-              'resnet50_v1d', 'resnet101_v1d', 'resnet152_v1d',
-              'resnet50_v1e', 'resnet101_v1e', 'resnet152_v1e',
-              'resnet18_v2', 'resnet34_v2',
-              'resnet50_v2', 'resnet101_v2', 'resnet152_v2',
-              'resnest50', 'resnest101', 'resnest200', 'resnest269',
-              'resnext50_32x4d', 'resnext101_32x4d', 'resnext101_64x4d',
-              'se_resnext50_32x4d', 'se_resnext101_32x4d', 'se_resnext101_64x4d',
-              'se_resnet18_v1', 'se_resnet34_v1', 'se_resnet50_v1',
-              'se_resnet101_v1', 'se_resnet152_v1',
-              'se_resnet18_v2', 'se_resnet34_v2', 'se_resnet50_v2',
-              'se_resnet101_v2', 'se_resnet152_v2',
-              'senet_154', 
+    models = [#'resnet18_v1', 'resnet34_v1',
+            #   'resnet50_v1', 'resnet101_v1', 'resnet152_v1',
+            #   'resnet18_v1b', 'resnet34_v1b', 'resnet50_v1b_gn',
+            #   'resnet50_v1b', 'resnet101_v1b', 'resnet152_v1b',
+            #   'resnet50_v1c', 'resnet101_v1c', 'resnet152_v1c',
+            #   'resnet50_v1d', 'resnet101_v1d', 'resnet152_v1d',
+            #   'resnet50_v1e', 'resnet101_v1e', 'resnet152_v1e',
+            #   'resnet18_v2', 'resnet34_v2',
+            #   'resnet50_v2', 'resnet101_v2', 'resnet152_v2',
+            #   'resnest50', 'resnest101', 'resnest200', 'resnest269',
+            #   'resnext50_32x4d', 'resnext101_32x4d', 'resnext101_64x4d',
+            #   'se_resnext50_32x4d', 'se_resnext101_32x4d', 'se_resnext101_64x4d',
+            #   'se_resnet18_v1', 'se_resnet34_v1', 'se_resnet50_v1',
+            #   'se_resnet101_v1', 'se_resnet152_v1',
+            #   'se_resnet18_v2', 'se_resnet34_v2', 'se_resnet50_v2',
+            #   'se_resnet101_v2', 'se_resnet152_v2',
+            #   'senet_154', 
             #   'squeezenet1.0', 'squeezenet1.1',
-              'mobilenet1.0', 'mobilenet0.75', 'mobilenet0.5', 'mobilenet0.25',
-              'mobilenetv2_1.0', 'mobilenetv2_0.75', 'mobilenetv2_0.5', 'mobilenetv2_0.25',
-              'mobilenetv3_large', 'mobilenetv3_small',
+            #   'mobilenet1.0', 'mobilenet0.75', 'mobilenet0.5', 'mobilenet0.25',
+            #   'mobilenetv2_1.0', 'mobilenetv2_0.75', 'mobilenetv2_0.5', 'mobilenetv2_0.25',
+            #   'mobilenetv3_large', 'mobilenetv3_small',
             #   'densenet121', 'densenet161', 'densenet169', 'densenet201',
               'darknet53',
             #   'alexnet', 'googlenet',
             #   'vgg11', 'vgg11_bn', 'vgg13', 'vgg13_bn',
             #   'vgg16', 'vgg16_bn', 'vgg19', 'vgg19_bn',
-              'residualattentionnet56', 'residualattentionnet92',
-              'residualattentionnet128', 'residualattentionnet164',
-              'residualattentionnet200', 'residualattentionnet236', 'residualattentionnet452',
+            #   'residualattentionnet56', 'residualattentionnet92',
+            #   'residualattentionnet128', 'residualattentionnet164',
+            #   'residualattentionnet200', 'residualattentionnet236', 'residualattentionnet452',
             #   'resnet18_v1b_0.89', 'resnet50_v1d_0.86', 'resnet50_v1d_0.48',
             #   'resnet50_v1d_0.37', 'resnet50_v1d_0.11',
             #   'resnet101_v1d_0.76', 'resnet101_v1d_0.73'
@@ -166,7 +166,7 @@ def test_imagenet_models():
     # _test_model_list(models, ctx, x)
 
 
-#@try_gpu(0)
+##@try_gpu(0)
 @unittest.skip("temporarily disabled")
 def test_simple_pose_resnet_models():
     ctx = mx.context.current_context()
@@ -190,7 +190,7 @@ def test_simple_pose_resnet_models():
     x = mx.random.uniform(shape=(2, 3, 288, 384), ctx=ctx)
     _test_model_list(models, ctx, x)
 
-#@try_gpu(0)
+##@try_gpu(0)
 @unittest.skip("temporarily disabled")
 def test_alpha_pose_resnet_models():
     ctx = mx.context.current_context()
@@ -200,7 +200,6 @@ def test_alpha_pose_resnet_models():
     x = mx.random.uniform(shape=(2, 3, 256, 320), ctx=ctx)
     _test_model_list(models, ctx, x)
 
-@unittest.skip("temporarily disabled")
 def test_imagenet_models_bn_global_stats():
     models = ['resnet18_v1b', 'resnet34_v1b', 'resnet50_v1b',
               'resnet101_v1b', 'resnet152_v1b']
@@ -262,7 +261,6 @@ def test_ssd_reset_class_on_gpu():
     net.reset_class(["bus", "car", "bird"], reuse_weights=["bus", "car", "bird"])
     net(x)
 
-@unittest.skip("temporarily disabled")
 def test_yolo3_reset_class():
     test_classes = ['bird', 'bicycle', 'bus', 'car', 'cat']
     test_classes_dict = dict(zip(test_classes, test_classes))
@@ -354,7 +352,7 @@ def test_mask_rcnn_reset_class():
     net.reset_class(["bus", "car", "bird"])
     net(x)
 
-#@try_gpu(0)
+##@try_gpu(0)
 @unittest.skip("temporarily disabled")
 def test_faster_rcnn_models():
     ctx = mx.context.current_context()
@@ -363,7 +361,7 @@ def test_faster_rcnn_models():
               'faster_rcnn_fpn_resnet50_v1b_coco']
     _test_model_list(models, ctx, x)
 
-#@try_gpu(0)
+##@try_gpu(0)
 @unittest.skip("temporarily disabled")
 def test_mask_rcnn_models():
     ctx = mx.context.current_context()
@@ -372,7 +370,7 @@ def test_mask_rcnn_models():
               'mask_rcnn_resnet18_v1b_coco', 'mask_rcnn_fpn_resnet18_v1b_coco']
     _test_model_list(models, ctx, x)
 
-#@try_gpu(0)
+##@try_gpu(0)
 @unittest.skip("temporarily disabled")
 def test_rcnn_max_dets_greater_than_nms_mask_rcnn_models():
     ctx = mx.context.current_context()
@@ -387,16 +385,14 @@ def test_rcnn_max_dets_greater_than_nms_mask_rcnn_models():
     net(x)
     mx.nd.waitall()
 
-@unittest.skip("temporarily disabled")
 def test_yolo3_models():
     ctx = mx.context.current_context()
-    x = mx.random.uniform(shape=(1, 3, 320, 320), ctx=ctx)  # allow non-squre and larger inputs
+    x = mx.np.random.uniform(size=(1, 3, 320, 320), ctx=ctx)  # allow non-squre and larger inputs
     models = ['yolo3_darknet53_voc']
     _test_model_list(models, ctx, x)
 
 
-#@try_gpu(0)
-@unittest.skip("temporarily disabled")
+##@try_gpu(0)
 def test_two_stage_ctx_loading():
     model_name = 'yolo3_darknet53_coco'
     ctx = mx.test_utils.default_context()
@@ -408,21 +404,23 @@ def test_two_stage_ctx_loading():
     net = gcv.model_zoo.get_model(model_name, pretrained=False, ctx=ctx)
     net.load_parameters(model_name + '.params', ctx=ctx)
 
-@unittest.skip("temporarily disabled")
 def test_set_nms():
-    model_list = ['ssd_512_resnet50_v1_voc', 'faster_rcnn_resnet50_v1b_voc', 'yolo3_darknet53_coco']
+    model_list = [
+        # 'ssd_512_resnet50_v1_voc',
+        # 'faster_rcnn_resnet50_v1b_voc',
+        'yolo3_darknet53_coco']
     for model in model_list:
         net = gcv.model_zoo.get_model(model, pretrained=False, pretrained_base=False)
         net.initialize()
         net.hybridize()
         ctx = mx.context.current_context()
-        x = mx.random.uniform(shape=(1, 3, 608, 768), ctx=ctx)
+        x = mx.np.random.uniform(size=(1, 3, 608, 768), ctx=ctx)
         net.set_nms(nms_thresh=0.45, nms_topk=400, post_nms=100)
         net(x)
         net.set_nms(nms_thresh=0.3, nms_topk=200, post_nms=50)
         net(x)
 
-#@try_gpu(0)
+##@try_gpu(0)
 @unittest.skip("temporarily disabled")
 def test_segmentation_models():
     ctx = mx.context.current_context()
@@ -439,7 +437,7 @@ def test_segmentation_models():
     _test_model_list(models, ctx, x, pretrained=False, pretrained_base=True)
 
 
-#@try_gpu(0)
+##@try_gpu(0)
 @unittest.skip("temporarily disabled")
 def test_segmentation_models_custom_size():
     ctx = mx.context.current_context()
@@ -472,7 +470,7 @@ def test_segmentation_models_custom_size():
     result = net.forward(x)
     assert result[0].shape == (1, num_classes, height, width)
 
-#@try_gpu(0)
+##@try_gpu(0)
 @unittest.skip("temporarily disabled")
 def test_action_recognition_vgg_models():
     ctx = mx.context.current_context()
@@ -484,7 +482,7 @@ def test_action_recognition_vgg_models():
     _test_model_list(models, ctx, x, pretrained=False, pretrained_base=False)
     _test_model_list(models, ctx, x, pretrained=False, pretrained_base=True)
 
-#@try_gpu(0)
+##@try_gpu(0)
 @unittest.skip("temporarily disabled")
 def test_action_recognition_inceptionv1_models():
     ctx = mx.context.current_context()
@@ -496,7 +494,7 @@ def test_action_recognition_inceptionv1_models():
     _test_model_list(models, ctx, x, pretrained=False, pretrained_base=False)
     _test_model_list(models, ctx, x, pretrained=False, pretrained_base=True)
 
-#@try_gpu(0)
+##@try_gpu(0)
 @unittest.skip("temporarily disabled")
 def test_action_recognition_inceptionv3_models():
     ctx = mx.context.current_context()
@@ -508,7 +506,7 @@ def test_action_recognition_inceptionv3_models():
     _test_model_list(models, ctx, x, pretrained=False, pretrained_base=False)
     _test_model_list(models, ctx, x, pretrained=False, pretrained_base=True)
 
-#@try_gpu(0)
+##@try_gpu(0)
 @unittest.skip("temporarily disabled")
 def test_action_recognition_resnet_models():
     ctx = mx.context.current_context()
@@ -522,7 +520,7 @@ def test_action_recognition_resnet_models():
     _test_model_list(models, ctx, x, pretrained=False, pretrained_base=False)
     _test_model_list(models, ctx, x, pretrained=False, pretrained_base=True)
 
-#@try_gpu(0)
+##@try_gpu(0)
 @unittest.skip("temporarily disabled")
 def test_action_recognition_c3d_models():
     ctx = mx.context.current_context()
@@ -534,7 +532,7 @@ def test_action_recognition_c3d_models():
     _test_model_list(models, ctx, x, pretrained=False, pretrained_base=False)
     _test_model_list(models, ctx, x, pretrained=False, pretrained_base=True)
 
-#@try_gpu(0)
+##@try_gpu(0)
 @unittest.skip("temporarily disabled")
 def test_action_recognition_p3d_models():
     ctx = mx.context.current_context()
@@ -546,7 +544,7 @@ def test_action_recognition_p3d_models():
     _test_model_list(models, ctx, x, pretrained=False, pretrained_base=False)
     _test_model_list(models, ctx, x, pretrained=False, pretrained_base=True)
 
-#@try_gpu(0)
+##@try_gpu(0)
 @unittest.skip("temporarily disabled")
 def test_action_recognition_r2plus1d_models():
     ctx = mx.context.current_context()
@@ -559,7 +557,7 @@ def test_action_recognition_r2plus1d_models():
     _test_model_list(models, ctx, x, pretrained=False, pretrained_base=False)
     _test_model_list(models, ctx, x, pretrained=False, pretrained_base=True)
 
-#@try_gpu(0)
+##@try_gpu(0)
 @unittest.skip("temporarily disabled")
 def test_action_recognition_i3d_models():
     ctx = mx.context.current_context()
@@ -574,7 +572,7 @@ def test_action_recognition_i3d_models():
     _test_model_list(models, ctx, x, pretrained=False, pretrained_base=False)
     _test_model_list(models, ctx, x, pretrained=False, pretrained_base=True)
 
-#@try_gpu(0)
+##@try_gpu(0)
 @unittest.skip("temporarily disabled")
 def test_action_recognition_slowfast_models():
     ctx = mx.context.current_context()
@@ -597,7 +595,7 @@ def test_action_recognition_slowfast_models():
     _test_model_list(models, ctx, x, pretrained=False, pretrained_base=False)
     _test_model_list(models, ctx, x, pretrained=False, pretrained_base=True)
 
-#@with_cpu(0)
+##@with_cpu(0)
 @unittest.skip("temporarily disabled")
 def test_mobilenet_sync_bn():
     model_name = "mobilenet1.0"
@@ -608,7 +606,7 @@ def test_mobilenet_sync_bn():
                                   norm_kwargs={'num_devices': 2})
     net.load_parameters(model_name + '.params')
 
-#@with_cpu(0)
+##@with_cpu(0)
 @unittest.skip("temporarily disabled")
 def test_quantized_imagenet_models():
     model_list = ['mobilenet1.0_int8', 'resnet50_v1_int8']
@@ -616,7 +614,7 @@ def test_quantized_imagenet_models():
     x = mx.random.uniform(shape=(1, 3, 224, 224), ctx=ctx)
     _test_model_list(model_list, ctx, x)
 
-#@with_cpu(0)
+##@with_cpu(0)
 @unittest.skip("temporarily disabled")
 def test_quantized_ssd_models():
     model_list = ['ssd_300_vgg16_atrous_voc_int8', 'ssd_512_mobilenet1.0_voc_int8',
@@ -630,51 +628,52 @@ def test_quantized_ssd_models():
 def test_calib_models():
     model_list = ['resnet50_v1', 'resnet50_v1d_0.11',
                   'mobilenet1.0', 'mobilenetv2_1.0',
-                  'squeezenet1.0', 'squeezenet1.1',
-                  'vgg16']
+                  'squeezenet1.0', 'squeezenet1.1'
+                #   'vgg16'
+                  ]
     ctx = mx.context.current_context()
-    x = mx.random.uniform(shape=(1, 3, 224, 224), ctx=ctx)
+    x = mx.np.random.uniform(size=(1, 3, 224, 224), ctx=ctx)
     _calib_model_list(model_list, ctx, x)
 
-    model_list = ['inceptionv3']
-    x = mx.random.uniform(shape=(1, 3, 299, 299), ctx=ctx)
-    _calib_model_list(model_list, ctx, x)
+    # model_list = ['inceptionv3']
+    # x = mx.random.uniform(shape=(1, 3, 299, 299), ctx=ctx)
+    # _calib_model_list(model_list, ctx, x)
 
-    model_list = ['ssd_300_vgg16_atrous_voc', 'ssd_512_mobilenet1.0_voc',
-                  'ssd_512_resnet50_v1_voc', 'ssd_512_vgg16_atrous_voc']
-    ctx = mx.context.current_context()
-    x = mx.random.uniform(shape=(1, 3, 512, 544), ctx=ctx)
-    _calib_model_list(model_list, ctx, x)
+    # model_list = ['ssd_300_vgg16_atrous_voc', 'ssd_512_mobilenet1.0_voc',
+    #               'ssd_512_resnet50_v1_voc', 'ssd_512_vgg16_atrous_voc']
+    # ctx = mx.context.current_context()
+    # x = mx.random.uniform(shape=(1, 3, 512, 544), ctx=ctx)
+    # _calib_model_list(model_list, ctx, x)
 
-    model_list = ['fcn_resnet101_voc', 'fcn_resnet101_coco',
-                  'psp_resnet101_voc', 'psp_resnet101_coco',
-                  'deeplab_resnet101_voc', 'deeplab_resnet101_coco']
-    ctx = mx.context.current_context()
-    x = mx.random.uniform(shape=(1, 3, 480, 480), ctx=ctx)
-    _calib_model_list(model_list, ctx, x)
+    # model_list = ['fcn_resnet101_voc', 'fcn_resnet101_coco',
+    #               'psp_resnet101_voc', 'psp_resnet101_coco',
+    #               'deeplab_resnet101_voc', 'deeplab_resnet101_coco']
+    # ctx = mx.context.current_context()
+    # x = mx.random.uniform(shape=(1, 3, 480, 480), ctx=ctx)
+    # _calib_model_list(model_list, ctx, x)
 
-    model_list = ['simple_pose_resnet18_v1b',
-                  'simple_pose_resnet50_v1b', 'simple_pose_resnet50_v1d',
-                  'simple_pose_resnet101_v1b', 'simple_pose_resnet101_v1d']
-    ctx = mx.context.current_context()
-    x = mx.random.uniform(shape=(1, 3, 256, 192), ctx=ctx)
-    _calib_model_list(model_list, ctx, x)
+    # model_list = ['simple_pose_resnet18_v1b',
+    #               'simple_pose_resnet50_v1b', 'simple_pose_resnet50_v1d',
+    #               'simple_pose_resnet101_v1b', 'simple_pose_resnet101_v1d']
+    # ctx = mx.context.current_context()
+    # x = mx.random.uniform(shape=(1, 3, 256, 192), ctx=ctx)
+    # _calib_model_list(model_list, ctx, x)
 
-    model_list = ['vgg16_ucf101', 'resnet18_v1b_kinetics400', 'resnet50_v1b_kinetics400']
-    ctx = mx.context.current_context()
-    x = mx.random.uniform(shape=(1, 3, 224, 224), ctx=ctx)
-    _calib_model_list(model_list, ctx, x)
+    # model_list = ['vgg16_ucf101', 'resnet18_v1b_kinetics400', 'resnet50_v1b_kinetics400']
+    # ctx = mx.context.current_context()
+    # x = mx.random.uniform(shape=(1, 3, 224, 224), ctx=ctx)
+    # _calib_model_list(model_list, ctx, x)
 
-    model_list = ['inceptionv3_ucf101', 'inceptionv3_kinetics400']
-    x = mx.random.uniform(shape=(1, 3, 299, 299), ctx=ctx)
-    _calib_model_list(model_list, ctx, x)
+    # model_list = ['inceptionv3_ucf101', 'inceptionv3_kinetics400']
+    # x = mx.random.uniform(shape=(1, 3, 299, 299), ctx=ctx)
+    # _calib_model_list(model_list, ctx, x)
 
     model_list = ['yolo3_darknet53_voc', 'yolo3_darknet53_coco',
                   'yolo3_mobilenet1.0_voc', 'yolo3_mobilenet1.0_coco']
-    x = mx.random.uniform(shape=(1, 3, 416, 416), ctx=ctx)
+    x = mx.np.random.uniform(size=(1, 3, 416, 416), ctx=ctx)
     _calib_model_list(model_list, ctx, x)
 
-#@with_cpu(0)
+##@with_cpu(0)
 @unittest.skip("temporarily disabled")
 def test_quantized_segmentation_models():
     model_list = ['fcn_resnet101_voc_int8', 'fcn_resnet101_coco_int8',
@@ -685,7 +684,7 @@ def test_quantized_segmentation_models():
     _test_model_list(model_list, ctx, x)
 
 
-#@with_cpu(0)
+##@with_cpu(0)
 @unittest.skip("temporarily disabled")
 def test_quantized_pose_estimation_models():
     model_list = ['simple_pose_resnet18_v1b_int8',

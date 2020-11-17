@@ -9,12 +9,14 @@ import numpy as np
 import mxnet as mx
 from mxnet import gluon
 from mxnet import autograd
+from mxnet import use_np
 from mxnet.gluon import nn
 from mxnet.gluon.nn import BatchNorm
 from .darknet import _conv2d, darknet53
 from ..mobilenet import get_mobilenet
 from .yolo_target import YOLOV3TargetMerger
 from ...loss import YOLOV3Loss
+mx.npx.set_np()
 
 __all__ = ['YOLOV3',
            'get_yolov3',
@@ -186,8 +188,8 @@ class YOLOOutputV3(gluon.HybridBlock):
         bboxes = mx.np.tile(bbox, reps=(self._classes, 1, 1, 1, 1))
         scores = mx.np.transpose(class_score, axes=(3, 0, 1, 2))
         scores = mx.np.expand_dims(scores, axis=-1)
-        ids = (scores * 0 + mx.np.arange(0, self._classes)
-        ids = ids.reshape((ids.shape[0], 1, 1, 1, 1)))
+        ids = scores * 0 + mx.np.arange(0, self._classes)
+        ids = ids.reshape((ids.shape[0], 1, 1, 1, 1))
         detections = mx.np.concatenate((ids, scores, bboxes), axis=-1)
         # reshape to (B, xx, 6)
         detections = detections.transpose(axes=(1, detections.shape[1], 2, 3, 4))
