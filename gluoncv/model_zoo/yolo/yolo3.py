@@ -69,21 +69,20 @@ class YOLOOutputV3(gluon.HybridBlock):
         self._num_pred = 1 + 4 + num_class  # 1 objness + 4 box + num_class
         self._num_anchors = anchors.size // 2
         self._stride = stride
-        with self.name_scope():
-            all_pred = self._num_pred * self._num_anchors
-            self.prediction = nn.Conv2D(all_pred, kernel_size=1, padding=0, strides=1)
-            # anchors will be multiplied to predictions
-            anchors = anchors.reshape(1, 1, -1, 2)
-            self.anchors = self.params.get_constant('anchor_%d'%(index), anchors)
-            # offsets will be added to predictions
-            grid_x = np.arange(alloc_size[1])
-            grid_y = np.arange(alloc_size[0])
-            grid_x, grid_y = np.meshgrid(grid_x, grid_y)
-            # stack to (n, n, 2)
-            offsets = np.concatenate((grid_x[:, :, np.newaxis], grid_y[:, :, np.newaxis]), axis=-1)
-            # expand dims to (1, 1, n, n, 2) so it's easier for broadcasting
-            offsets = np.expand_dims(np.expand_dims(offsets, axis=0), axis=0)
-            self.offsets = self.params.get_constant('offset_%d'%(index), offsets)
+        all_pred = self._num_pred * self._num_anchors
+        self.prediction = nn.Conv2D(all_pred, kernel_size=1, padding=0, strides=1)
+        # anchors will be multiplied to predictions
+        anchors = anchors.reshape(1, 1, -1, 2)
+        self.anchors = self.params.get_constant('anchor_%d'%(index), anchors)
+        # offsets will be added to predictions
+        grid_x = np.arange(alloc_size[1])
+        grid_y = np.arange(alloc_size[0])
+        grid_x, grid_y = np.meshgrid(grid_x, grid_y)
+        # stack to (n, n, 2)
+        offsets = np.concatenate((grid_x[:, :, np.newaxis], grid_y[:, :, np.newaxis]), axis=-1)
+        # expand dims to (1, 1, n, n, 2) so it's easier for broadcasting
+        offsets = np.expand_dims(np.expand_dims(offsets, axis=0), axis=0)
+        self.offsets = self.params.get_constant('offset_%d'%(index), offsets)
 
     def reset_class(self, classes, reuse_weights=None):
         """Reset class prediction.
@@ -217,18 +216,17 @@ class YOLODetectionBlockV3(gluon.HybridBlock):
     def __init__(self, channel, norm_layer=BatchNorm, norm_kwargs=None, **kwargs):
         super(YOLODetectionBlockV3, self).__init__(**kwargs)
         assert channel % 2 == 0, "channel {} cannot be divided by 2".format(channel)
-        with self.name_scope():
-            self.body = nn.HybridSequential(prefix='')
-            for _ in range(2):
-                # 1x1 reduce
-                self.body.add(_conv2d(channel, 1, 0, 1,
-                                      norm_layer=norm_layer, norm_kwargs=norm_kwargs))
-                # 3x3 expand
-                self.body.add(_conv2d(channel * 2, 3, 1, 1,
-                                      norm_layer=norm_layer, norm_kwargs=norm_kwargs))
+        self.body = nn.HybridSequential()
+        for _ in range(2):
+            # 1x1 reduce
             self.body.add(_conv2d(channel, 1, 0, 1,
-                                  norm_layer=norm_layer, norm_kwargs=norm_kwargs))
-            self.tip = _conv2d(channel * 2, 3, 1, 1, norm_layer=norm_layer, norm_kwargs=norm_kwargs)
+                                    norm_layer=norm_layer, norm_kwargs=norm_kwargs))
+            # 3x3 expand
+            self.body.add(_conv2d(channel * 2, 3, 1, 1,
+                                    norm_layer=norm_layer, norm_kwargs=norm_kwargs))
+        self.body.add(_conv2d(channel, 1, 0, 1,
+                                norm_layer=norm_layer, norm_kwargs=norm_kwargs))
+        self.tip = _conv2d(channel * 2, 3, 1, 1, norm_layer=norm_layer, norm_kwargs=norm_kwargs)
 
     # pylint: disable=unused-argument
     def forward(self, x):
@@ -298,23 +296,22 @@ class YOLOV3(gluon.HybridBlock):
             raise NotImplementedError(
                 "pos_iou_thresh({}) < 1.0 is not implemented!".format(pos_iou_thresh))
         self._loss = YOLOV3Loss()
-        with self.name_scope():
-            self.stages = nn.HybridSequential()
-            self.transitions = nn.HybridSequential()
-            self.yolo_blocks = nn.HybridSequential()
-            self.yolo_outputs = nn.HybridSequential()
-            # note that anchors and strides should be used in reverse order
-            for i, stage, channel, anchor, stride in zip(
-                    range(len(stages)), stages, channels, anchors[::-1], strides[::-1]):
-                self.stages.add(stage)
-                block = YOLODetectionBlockV3(
-                    channel, norm_layer=norm_layer, norm_kwargs=norm_kwargs)
-                self.yolo_blocks.add(block)
-                output = YOLOOutputV3(i, len(classes), anchor, stride, alloc_size=alloc_size)
-                self.yolo_outputs.add(output)
-                if i > 0:
-                    self.transitions.add(_conv2d(channel, 1, 0, 1,
-                                                 norm_layer=norm_layer, norm_kwargs=norm_kwargs))
+        self.stages = nn.HybridSequential()
+        self.transitions = nn.HybridSequential()
+        self.yolo_blocks = nn.HybridSequential()
+        self.yolo_outputs = nn.HybridSequential()
+        # note that anchors and strides should be used in reverse order
+        for i, stage, channel, anchor, stride in zip(
+                range(len(stages)), stages, channels, anchors[::-1], strides[::-1]):
+            self.stages.add(stage)
+            block = YOLODetectionBlockV3(
+                channel, norm_layer=norm_layer, norm_kwargs=norm_kwargs)
+            self.yolo_blocks.add(block)
+            output = YOLOOutputV3(i, len(classes), anchor, stride, alloc_size=alloc_size)
+            self.yolo_outputs.add(output)
+            if i > 0:
+                self.transitions.add(_conv2d(channel, 1, 0, 1,
+                                                norm_layer=norm_layer, norm_kwargs=norm_kwargs))
 
     @property
     def num_class(self):
