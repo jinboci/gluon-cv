@@ -266,7 +266,7 @@ def test_yolo3_reset_class():
     test_classes_dict = dict(zip(test_classes, test_classes))
 
     ctx = mx.context.current_context()
-    x = mx.random.uniform(shape=(1, 3, 512, 544), ctx=ctx)  # allow non-square and larger inputs
+    x = mx.np.random.uniform(size=(1, 3, 512, 544), ctx=ctx)  # allow non-square and larger inputs
     model_name = 'yolo3_darknet53_voc'
     net = gcv.model_zoo.get_model(model_name, pretrained=True, ctx=ctx)
     net.hybridize()
@@ -696,6 +696,11 @@ def test_quantized_pose_estimation_models():
 
 
 if __name__ == '__main__':
-    import nose
+    # import nose
 
-    nose.runmodule()
+    # nose.runmodule()
+    test_imagenet_models()
+    test_yolo3_reset_class()
+    test_yolo3_models()
+    test_two_stage_ctx_loading()
+    test_set_nms()
